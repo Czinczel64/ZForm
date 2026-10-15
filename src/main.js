@@ -235,7 +235,7 @@ async function saveLocal() {
   if (!db) { $('#saved-label').textContent = 'Sessão atual'; return; }
   const p = mesh.geometry.getAttribute('position');
   const c = mesh.geometry.getAttribute('color');
-  const data = { name: mesh.name, positions: Array.from(p.array), colors: Array.from(c.array), mask: Array.from(mesh.geometry.getAttribute('mask').array), material: activeMaterial, savedAt: Date.now() };
+  const data = { name: mesh.name, positions: Array.from(p.array), indices: mesh.geometry.index ? Array.from(mesh.geometry.index.array) : null, colors: Array.from(c.array), mask: Array.from(mesh.geometry.getAttribute('mask').array), material: activeMaterial, savedAt: Date.now() };
   const tx = db.transaction('documents', 'readwrite');
   tx.objectStore('documents').put(data, 'current');
   tx.oncomplete = () => { $('#saved-label').textContent = 'Salvo localmente'; };
@@ -253,6 +253,15 @@ async function loadLocal() {
       if (matOptions[data.material]) activeMaterial = data.material;
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(data.positions, 3));
+      const indices = data.indices || buildLegacySphereIndices(data.positions.length / 3);
+      if (indices) geometry.setIndex(indices);
+      else if ((data.positions.length / 3) % 3 !== 0) {
+        const backupKey = `legacy-${data.savedAt || Date.now()}`;
+        db.transaction('documents', 'readwrite').objectStore('documents').put(data, backupKey);
+        setToast('Estudo antigo preservado; iniciando uma malha visível');
+        resolve(false);
+        return;
+      }
       if (data.colors) geometry.setAttribute('color', new THREE.Float32BufferAttribute(data.colors, 3));
       if (data.mask) geometry.setAttribute('mask', new THREE.Float32BufferAttribute(data.mask, 1));
       geometry.computeVertexNormals();
@@ -264,6 +273,30 @@ async function loadLocal() {
     };
     req.onerror = () => resolve(false);
   });
+}
+
+function buildLegacySphereIndices(vertexCount) {
+  const base = new THREE.SphereGeometry(1, 64, 48);
+  let count = base.getAttribute('position').count;
+  let indices = Array.from(base.index.array);
+  base.dispose();
+  if (vertexCount < count) return null;
+  while (count < vertexCount) {
+    const edges = new Map();
+    const next = [];
+    const midpoint = (a, b) => {
+      const key = a < b ? `${a}:${b}` : `${b}:${a}`;
+      if (!edges.has(key)) edges.set(key, count++);
+      return edges.get(key);
+    };
+    for (let i = 0; i < indices.length; i += 3) {
+      const a = indices[i], b = indices[i + 1], c = indices[i + 2];
+      const ab = midpoint(a, b), bc = midpoint(b, c), ca = midpoint(c, a);
+      next.push(a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca);
+    }
+    indices = next;
+  }
+  return count === vertexCount ? indices : null;
 }
 
 function setTool(tool) {
