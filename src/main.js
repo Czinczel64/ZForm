@@ -24,7 +24,7 @@ const guideSteps = [
   ['Ajuste o pincel', 'No painel Propriedades, ajuste tamanho e intensidade. Comece com movimentos leves e aumente aos poucos.', 'Tamanho e intensidade', 'Painel à direita'],
   ['Modele a forma', 'Arraste o botão esquerdo sobre o modelo para esculpir. Segure Alt enquanto arrasta para orbitar; a roda controla o zoom.', 'Faça algumas passadas', 'Botão esquerdo'],
   ['Pinte seu modelo', 'Escolha Pincel na barra lateral, selecione uma cor e arraste sobre a forma. A simetria X está ligada por padrão.', 'Pincel de pintura', '6'],
-  ['Salve e exporte', 'O estudo é salvo neste dispositivo automaticamente. Use Exportar para gerar um OBJ, STL ou GLB.', 'Exportar modelo', 'OBJ / STL / GLB']
+  ['Salve e exporte', 'O estudo é salvo neste dispositivo automaticamente. Use Exportar para salvar um projeto ZForm editável ou gerar OBJ, STL ou GLB.', 'Projeto ou exportação', '.zform / OBJ / STL / GLB']
 ];
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
@@ -654,7 +654,7 @@ function openHelp() {
   $('#help-eyebrow').textContent = 'COMECE EM 1 MINUTO';
   $('#help-title').textContent = 'Conheça o ZForm';
   $('#help-text').textContent = 'Este guia mostra o fluxo básico para esculpir, pintar e salvar seu primeiro estudo.';
-  $('#guide-content').innerHTML = '<div><span>Desenhar / suavizar</span><kbd>1 / 2</kbd></div><div><span>Mover / inflar</span><kbd>3 / 4</kbd></div><div><span>Achatar / raspar</span><kbd>5 / F</kbd></div><div><span>Argila / camada</span><kbd>8 / L</kbd></div><div><span>Vinco / pinçar</span><kbd>9 / 0</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div>';
+  $('#guide-content').innerHTML = '<div><span>Salvar projeto editável</span><kbd>.zform</kbd></div><div><span>Desenhar / suavizar</span><kbd>1 / 2</kbd></div><div><span>Mover / inflar</span><kbd>3 / 4</kbd></div><div><span>Achatar / raspar</span><kbd>5 / F</kbd></div><div><span>Argila / camada</span><kbd>8 / L</kbd></div><div><span>Vinco / pinçar</span><kbd>9 / 0</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div>';
   $('#start-help').textContent = 'Começar guia';
   $('#help-modal').classList.remove('hidden');
 }
