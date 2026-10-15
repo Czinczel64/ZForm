@@ -1,6 +1,6 @@
 {
-  "name": "ZForm — Estúdio 3D",
-  "short_name": "ZForm",
+  "name": "ZForm Lite — Estúdio 3D",
+  "short_name": "ZForm Lite",
   "description": "Um espaço original para esculpir e pintar formas 3D.",
   "start_url": "./",
   "scope": "./",
@@ -11,3 +11,4 @@
     { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
+

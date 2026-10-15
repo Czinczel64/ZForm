@@ -1,6 +1,6 @@
-# ZForm
+# ZForm Lite
 
-ZForm is an original, local-first 3D sculpting and painting prototype. It is inspired by common 3D sculpting workflows and has its own interface and implementation.
+ZForm Lite is an original, local-first 3D sculpting and painting prototype. It is inspired by common 3D sculpting workflows and has its own interface and implementation.
 
 ## MVP scope
 
@@ -10,6 +10,7 @@ ZForm is an original, local-first 3D sculpting and painting prototype. It is ins
 - Local project persistence in IndexedDB.
 - Native `.zform` project files preserve the mesh topology, vertex colors, masks, material, and project name for reopening in ZForm.
 - Undo and redo preserve mesh topology when restoring geometry changes such as refinement. Imported and restored meshes are checked for finite positions, valid triangle indices, matching color/mask attributes, and the 120,000-vertex budget before replacing the active study.
+- Sculpt strokes use a CPU spatial grid to visit nearby vertices, update local vertex normals, and upload changed attribute ranges when the edit is sufficiently localized. The topology cache is held in browser memory; this reduces per-stroke work but has not been benchmarked on the GTX 1650 target.
 - OBJ, STL, and GLB import and export (the current importer uses the first mesh in a GLB scene).
 - Installable PWA shell with a service worker for same-origin assets.
 - A five-step guided walkthrough, contextual tips, and keyboard shortcuts in Portuguese.

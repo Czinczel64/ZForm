@@ -5,6 +5,7 @@ ZForm é um projeto original de código aberto, com interface e implementação 
 ## Estado atual
 
 - Fundação de malha: validação de posições, índices, cores, máscaras e limite de vértices em importação/restauração; Undo/Redo restaura também os índices após refinamento.
+- Desempenho do pincel: grade espacial em CPU para consultar vértices próximos, atualização local das normais e envio parcial dos atributos alterados. O custo inicial de montar o índice topológico e o impacto em RAM ainda precisam de benchmark nas máquinas-alvo.
 - Escultura direta: desenhar, suavizar, mover, inflar, achatar, argila, vinco e pinçar.
 - Máscara por vértice, proteção de pintura/escultura, preenchimento de cor e pintura de vértice.
 - Simetria X, desfazer/refazer, refinamento simples e navegação com Alt + arrastar.

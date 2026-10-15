@@ -8,6 +8,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { assertValidGeometry } from './geometry-validation.js';
+import { VertexSpatialIndex } from './vertex-spatial-index.js';
+import { buildVertexFaceIndex, updateVertexNormalsLocally } from './local-normals.js';
 import './style.css';
 
 const $ = (selector) => document.querySelector(selector);
@@ -25,7 +27,7 @@ const guideSteps = [
   ['Ajuste o pincel', 'No painel Propriedades, ajuste tamanho e intensidade. Comece com movimentos leves e aumente aos poucos.', 'Tamanho e intensidade', 'Painel à direita'],
   ['Modele a forma', 'Arraste o botão esquerdo sobre o modelo para esculpir. Segure Alt enquanto arrasta para orbitar; a roda controla o zoom.', 'Faça algumas passadas', 'Botão esquerdo'],
   ['Pinte seu modelo', 'Escolha Pincel na barra lateral, selecione uma cor e arraste sobre a forma. A simetria X está ligada por padrão.', 'Pincel de pintura', '6'],
-  ['Salve e exporte', 'O estudo é salvo neste dispositivo automaticamente. Use Exportar para salvar um projeto ZForm editável ou gerar OBJ, STL ou GLB.', 'Projeto ou exportação', '.zform / OBJ / STL / GLB']
+  ['Salve e exporte', 'O estudo é salvo neste dispositivo automaticamente. Use Exportar para salvar um projeto ZForm Lite editável ou gerar OBJ, STL ou GLB.', 'Projeto ou exportação', '.zform / OBJ / STL / GLB']
 ];
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
@@ -101,6 +103,47 @@ let guideIndex = -1;
 let showWireframe = false;
 let symmetry = true;
 const neighborCache = new WeakMap();
+const spatialIndexCache = new WeakMap();
+const vertexFaceCache = new WeakMap();
+
+function getVertexFaceIndex(geometry) {
+  let topology = vertexFaceCache.get(geometry);
+  if (!topology) {
+    topology = buildVertexFaceIndex(geometry);
+    vertexFaceCache.set(geometry, topology);
+  }
+  return topology;
+}
+
+function getVertexSpatialIndex(geometry) {
+  let index = spatialIndexCache.get(geometry);
+  if (!index) {
+    index = new VertexSpatialIndex(geometry.getAttribute('position'));
+    spatialIndexCache.set(geometry, index);
+  }
+  return index;
+}
+
+function markAttributeRanges(attribute, indices) {
+  if (!attribute || !indices.length) return;
+  indices.sort((a, b) => a - b);
+  const unique = indices.filter((value, index) => index === 0 || value !== indices[index - 1]);
+  const ranges = [];
+  let start = unique[0], end = start;
+  for (let i = 1; i < unique.length; i++) {
+    const value = unique[i];
+    if (value <= end + 1) end = value;
+    else { ranges.push([start, end]); start = end = value; }
+  }
+  ranges.push([start, end]);
+  attribute.clearUpdateRanges();
+  if (ranges.length > 32) {
+    attribute.needsUpdate = true;
+    return;
+  }
+  for (const [first, last] of ranges) attribute.addUpdateRange(first * attribute.itemSize, (last - first + 1) * attribute.itemSize);
+  attribute.needsUpdate = true;
+}
 
 const matOptions = {
   clay: { roughness: 0.78, metalness: 0.02 }, matte: { roughness: 1, metalness: 0 },
@@ -203,6 +246,9 @@ function restoreSnapshot(snapshot) {
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(snapshot.colors), 3));
   if (snapshot.mask) geometry.setAttribute('mask', new THREE.BufferAttribute(new Float32Array(snapshot.mask), 1));
   geometry.setIndex(snapshot.indices ? new THREE.BufferAttribute(new snapshot.indices.constructor(snapshot.indices), 1) : null);
+  spatialIndexCache.delete(geometry);
+  neighborCache.delete(geometry);
+  vertexFaceCache.delete(geometry);
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   updateGeometryInfo(); queueSave();
@@ -347,19 +393,40 @@ function dab(event) {
   const localCenter = mesh.worldToLocal(center.clone());
   const normalLocal = normal.clone().transformDirection(mesh.matrixWorld.clone().invert()).normalize();
   const directions = symmetry ? [localCenter, new THREE.Vector3(-localCenter.x, localCenter.y, localCenter.z)] : [localCenter];
+  const spatialIndex = getVertexSpatialIndex(geometry);
+  const candidateSet = new Set();
+  for (const direction of directions) for (const index of spatialIndex.querySphere(direction, radius)) candidateSet.add(index);
+  const candidates = [...candidateSet];
   const neighbors = activeTool === 'smooth' ? getVertexNeighbors(geometry) : null;
   const vertexNormals = activeTool === 'inflate' ? geometry.getAttribute('normal') : null;
+  const positionDirty = [], colorDirty = [], maskDirty = [];
+  const topology = activeTool === 'smooth' ? null : getVertexFaceIndex(geometry);
+  const expandedPoint = new THREE.Vector3();
+  const writePosition = (index, x, y, z) => {
+    const oldX = position.getX(index), oldY = position.getY(index), oldZ = position.getZ(index);
+    position.setXYZ(index, x, y, z);
+    positionDirty.push(index);
+    spatialIndex.updateVertex(index, x, y, z);
+    expandedPoint.set(x, y, z);
+    geometry.boundingSphere?.expandByPoint(expandedPoint);
+  };
   let touched = false;
-  for (let i = 0; i < position.count; i++) {
-    const vertex = new THREE.Vector3().fromBufferAttribute(position, i);
+  for (const i of candidates) {
+    const oldX = position.getX(i), oldY = position.getY(i), oldZ = position.getZ(i);
+    const vertex = new THREE.Vector3(oldX, oldY, oldZ);
     let best = Infinity;
-    for (const c of directions) best = Math.min(best, vertex.distanceTo(c));
+    for (const c of directions) {
+      const dx = oldX - c.x, dy = oldY - c.y, dz = oldZ - c.z;
+      best = Math.min(best, dx * dx + dy * dy + dz * dz);
+    }
+    best = Math.sqrt(best);
     if (best > radius) continue;
     const falloff = (1 - best / radius) ** 2;
     const maskAmount = mask?.getX(i) ?? 0;
     if (activeTool === 'mask' || activeTool === 'unmask') {
       const target = activeTool === 'mask' ? 1 : 0;
       mask.setX(i, THREE.MathUtils.lerp(maskAmount, target, Math.min(1, strength * falloff * 0.8)));
+      maskDirty.push(i);
       touched = true;
       continue;
     }
@@ -370,6 +437,7 @@ function dab(event) {
       const amount = Math.min(0.92, strength * falloff * 0.72 * protection);
       current.lerp(brushColor, amount);
       colors.setXYZ(i, current.r, current.g, current.b);
+      colorDirty.push(i);
     } else if (activeTool === 'smooth') {
       const adjacent = neighbors[i];
       if (!adjacent?.length) continue;
@@ -378,7 +446,7 @@ function dab(event) {
       average.multiplyScalar(1 / adjacent.length);
       const original = new THREE.Vector3().fromBufferAttribute(position, i);
       const softened = original.lerp(average, Math.min(0.45, strength * falloff * 0.55 * protection));
-      position.setXYZ(i, softened.x, softened.y, softened.z);
+      writePosition(i, softened.x, softened.y, softened.z);
     } else {
       let amount = strength * falloff * 0.032 * protection;
       if (activeTool === 'move') amount = strength * falloff * 0.055 * protection;
@@ -387,35 +455,39 @@ function dab(event) {
       if (activeTool === 'pinch') {
         const inward = localCenter.clone().sub(vertex).normalize();
         vertex.addScaledVector(inward, strength * falloff * 0.035 * protection);
-        position.setXYZ(i, vertex.x, vertex.y, vertex.z); touched = true; continue;
+        writePosition(i, vertex.x, vertex.y, vertex.z); touched = true; continue;
       }
       if (activeTool === 'clay') amount *= 0.72;
       if (activeTool === 'scrape' || activeTool === 'flatten') {
         const distance = vertex.clone().sub(localCenter).dot(normalLocal);
         const factor = activeTool === 'scrape' ? 0.78 : 0.45;
         const adjusted = vertex.clone().addScaledVector(normalLocal, -distance * strength * falloff * factor * protection);
-        position.setXYZ(i, adjusted.x, adjusted.y, adjusted.z); touched = true; continue;
+        writePosition(i, adjusted.x, adjusted.y, adjusted.z); touched = true; continue;
       }
       if (activeTool === 'layer') {
         const height = vertex.clone().sub(localCenter).dot(normalLocal);
         const targetHeight = 0.018 + amount * 0.7;
         const lift = Math.min(amount, Math.max(0, targetHeight - height));
         vertex.addScaledVector(normalLocal, lift);
-        position.setXYZ(i, vertex.x, vertex.y, vertex.z); touched = true; continue;
+        writePosition(i, vertex.x, vertex.y, vertex.z); touched = true; continue;
       }
       let direction = normalLocal;
       if (activeTool === 'inflate') direction = new THREE.Vector3().fromBufferAttribute(vertexNormals, i).normalize();
       if (activeTool === 'pinch') direction = vertex.clone().sub(localCenter).normalize();
       const delta = activeTool === 'pinch' ? -amount * 1.8 : amount;
       vertex.addScaledVector(direction, delta);
-      position.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      writePosition(i, vertex.x, vertex.y, vertex.z);
     }
     touched = true;
   }
   if (touched) {
-    position.needsUpdate = true; colors.needsUpdate = true;
-    mask.needsUpdate = true;
-    geometry.computeVertexNormals(); geometry.computeBoundingSphere();
+    markAttributeRanges(position, positionDirty);
+    markAttributeRanges(colors, colorDirty);
+    markAttributeRanges(mask, maskDirty);
+    if (positionDirty.length) {
+      const normalDirty = updateVertexNormalsLocally(geometry, positionDirty, topology || getVertexFaceIndex(geometry));
+      markAttributeRanges(geometry.getAttribute('normal'), normalDirty);
+    }
     if (performance.now() - lastDab > 180) { updateGeometryInfo(); lastDab = performance.now(); }
   }
 }
@@ -477,7 +549,7 @@ async function importFile(file) {
     if (ext === 'zform') {
       const project = JSON.parse(await file.text());
       const vertexCount = project.positions?.length / 3;
-      if (project.format !== 'zform' || project.version !== 1 || !Array.isArray(project.positions) || !Number.isInteger(vertexCount) || vertexCount < 3) throw new Error('Projeto ZForm inválido');
+      if (project.format !== 'zform' || project.version !== 1 || !Array.isArray(project.positions) || !Number.isInteger(vertexCount) || vertexCount < 3) throw new Error('Projeto ZForm Lite inválido');
       if (project.indices !== null && project.indices !== undefined && !Array.isArray(project.indices)) throw new Error('Índices de malha inválidos');
       if (project.colors !== undefined && (!Array.isArray(project.colors) || project.colors.length !== vertexCount * 3)) throw new Error('Cores de malha inválidas');
       if (project.mask !== undefined && (!Array.isArray(project.mask) || project.mask.length !== vertexCount)) throw new Error('Máscara de malha inválida');
@@ -493,7 +565,7 @@ async function importFile(file) {
       document.querySelectorAll('.material-card').forEach((button) => button.classList.toggle('selected', button.dataset.material === activeMaterial));
       mesh.material.roughness = matOptions[activeMaterial].roughness;
       mesh.material.metalness = matOptions[activeMaterial].metalness;
-      setToast('Projeto ZForm aberto');
+      setToast('Projeto ZForm Lite aberto');
       return;
     } else if (ext === 'obj') {
       const root = new OBJLoader().parse(await file.text());
@@ -537,7 +609,7 @@ function exportFile(format) {
       mask: Array.from(geometry.getAttribute('mask').array)
     };
     downloadBlob(new Blob([JSON.stringify(project)], { type: 'application/vnd.zform+json' }), `${name}.zform`);
-    setToast('Projeto ZForm salvo');
+    setToast('Projeto ZForm Lite salvo');
   } else if (format === 'obj') {
     const text = new OBJExporter().parse(mesh);
     downloadBlob(new Blob([text], { type: 'text/plain' }), `${name}.obj`);
@@ -584,6 +656,7 @@ function refineMesh() {
   refined.setAttribute('mask', new THREE.Float32BufferAttribute(masks,1));
   refined.setIndex(indices);
   refined.computeVertexNormals();
+  spatialIndexCache.delete(old);
   mesh.geometry = refined; old.dispose(); updateGeometryInfo(); queueSave(); setToast('Malha refinada');
 }
 
@@ -662,7 +735,7 @@ document.addEventListener('click', (event) => { if (!event.target.closest('#expo
 function openHelp() {
   guideIndex = -1;
   $('#help-eyebrow').textContent = 'COMECE EM 1 MINUTO';
-  $('#help-title').textContent = 'Conheça o ZForm';
+  $('#help-title').textContent = 'Conheça o ZForm Lite';
   $('#help-text').textContent = 'Este guia mostra o fluxo básico para esculpir, pintar e salvar seu primeiro estudo.';
   $('#guide-content').innerHTML = '<div><span>Salvar projeto editável</span><kbd>.zform</kbd></div><div><span>Desenhar / suavizar</span><kbd>1 / 2</kbd></div><div><span>Mover / inflar</span><kbd>3 / 4</kbd></div><div><span>Achatar / raspar</span><kbd>5 / F</kbd></div><div><span>Argila / camada</span><kbd>8 / L</kbd></div><div><span>Vinco / pinçar</span><kbd>9 / 0</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div>';
   $('#start-help').textContent = 'Começar guia';

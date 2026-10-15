@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#111315" />
-    <meta name="description" content="ZForm, um estúdio original de escultura e pintura 3D." />
+    <meta name="description" content="ZForm Lite, um estúdio original e leve de escultura e pintura 3D." />
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
-    <title>ZForm — Estúdio 3D</title>
+    <title>ZForm Lite — Estúdio 3D</title>
   </head>
   <body>
     <div id="app">
       <header class="topbar">
-        <a class="brand" href="#" aria-label="ZForm início"><span class="brand-mark">Z</span><span>ZForm</span></a>
+        <a class="brand" href="#" aria-label="ZForm Lite início"><span class="brand-mark">Z</span><span>ZForm Lite</span></a>
         <div class="project-name"><span class="status-dot"></span><span id="project-title">Estudo sem título</span><span class="saved-label" id="saved-label">Salvo localmente</span></div>
         <div class="top-actions"><button class="open-btn" id="open-file-button">Abrir modelo</button><button class="quiet-btn" id="help-button" title="Ajuda">Ajuda <kbd>?</kbd></button><button class="export-btn" id="export-menu-button">Exportar <span>⌄</span></button></div>
       </header>
@@ -63,8 +63,8 @@
         </aside>
       </main>
       <input id="file-input" type="file" accept=".zform,.obj,.stl,.glb,.gltf,model/stl,model/gltf-binary,text/plain" hidden />
-      <div id="export-popover" class="export-popover hidden"><button data-export="zform">Salvar projeto ZForm</button><button data-export="obj">Exportar OBJ</button><button data-export="stl">Exportar STL</button><button data-export="glb">Exportar GLB</button></div>
-      <div id="help-modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="modal-close" id="close-help">×</button><span class="modal-eyebrow" id="help-eyebrow">COMECE EM 1 MINUTO</span><h2 id="help-title">Conheça o ZForm</h2><p id="help-text">Este guia mostra o fluxo básico para esculpir, pintar e salvar seu primeiro estudo.</p><div class="shortcut-list" id="guide-content"><div><span>Desenhar volume</span><kbd>1</kbd></div><div><span>Suavizar</span><kbd>2</kbd></div><div><span>Mover</span><kbd>3</kbd></div><div><span>Inflar / achatar</span><kbd>4 / 5</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div><div><span>Importar arquivo</span><kbd>Arraste para a tela</kbd></div></div><div class="guide-actions"><button class="secondary-button" id="skip-tour">Fechar</button><button class="primary-button" id="start-help">Começar guia</button></div></div></div>
+      <div id="export-popover" class="export-popover hidden"><button data-export="zform">Salvar projeto ZForm Lite</button><button data-export="obj">Exportar OBJ</button><button data-export="stl">Exportar STL</button><button data-export="glb">Exportar GLB</button></div>
+      <div id="help-modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="modal-close" id="close-help">×</button><span class="modal-eyebrow" id="help-eyebrow">COMECE EM 1 MINUTO</span><h2 id="help-title">Conheça o ZForm Lite</h2><p id="help-text">Este guia mostra o fluxo básico para esculpir, pintar e salvar seu primeiro estudo.</p><div class="shortcut-list" id="guide-content"><div><span>Desenhar volume</span><kbd>1</kbd></div><div><span>Suavizar</span><kbd>2</kbd></div><div><span>Mover</span><kbd>3</kbd></div><div><span>Inflar / achatar</span><kbd>4 / 5</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div><div><span>Importar arquivo</span><kbd>Arraste para a tela</kbd></div></div><div class="guide-actions"><button class="secondary-button" id="skip-tour">Fechar</button><button class="primary-button" id="start-help">Começar guia</button></div></div></div>
       <div class="bottom-hint">Feito para explorar <span>✦</span> <button id="bottom-help">Atalhos e ajuda</button></div>
     </div>
     <script type="module" src="/src/main.js"></script>
