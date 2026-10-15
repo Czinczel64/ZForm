@@ -7,6 +7,7 @@ import { STLExporter } from 'three/addons/exporters/STLExporter.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { assertValidGeometry } from './geometry-validation.js';
 import './style.css';
 
 const $ = (selector) => document.querySelector(selector);
@@ -123,6 +124,7 @@ function setToast(message) {
 }
 
 function setGeometry(geometry, name = 'Estudo sem título') {
+  assertValidGeometry(geometry);
   if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); }
   // Imported or restored scenes must never inherit the wireframe/transparent display state.
   showWireframe = false;
@@ -187,7 +189,11 @@ function snapshotGeometry() {
   const p = mesh.geometry.getAttribute('position');
   const c = mesh.geometry.getAttribute('color');
   const m = mesh.geometry.getAttribute('mask');
-  return { positions: new Float32Array(p.array), colors: new Float32Array(c.array), mask: new Float32Array(m?.array || p.count) };
+  return {
+    positions: new Float32Array(p.array), colors: new Float32Array(c.array),
+    mask: new Float32Array(m?.array || p.count),
+    indices: mesh.geometry.index ? new mesh.geometry.index.array.constructor(mesh.geometry.index.array) : null
+  };
 }
 
 function restoreSnapshot(snapshot) {
@@ -196,6 +202,7 @@ function restoreSnapshot(snapshot) {
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(snapshot.positions), 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(snapshot.colors), 3));
   if (snapshot.mask) geometry.setAttribute('mask', new THREE.BufferAttribute(new Float32Array(snapshot.mask), 1));
+  geometry.setIndex(snapshot.indices ? new THREE.BufferAttribute(new snapshot.indices.constructor(snapshot.indices), 1) : null);
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   updateGeometryInfo(); queueSave();
@@ -264,6 +271,7 @@ async function loadLocal() {
       }
       if (data.colors) geometry.setAttribute('color', new THREE.Float32BufferAttribute(data.colors, 3));
       if (data.mask) geometry.setAttribute('mask', new THREE.Float32BufferAttribute(data.mask, 1));
+      try { assertValidGeometry(geometry); } catch { resolve(false); return; }
       geometry.computeVertexNormals();
       setGeometry(geometry, data.name || 'Estudo sem título');
       mesh.material.roughness = matOptions[activeMaterial].roughness;
@@ -469,14 +477,18 @@ async function importFile(file) {
     if (ext === 'zform') {
       const project = JSON.parse(await file.text());
       const vertexCount = project.positions?.length / 3;
-      if (project.format !== 'zform' || !Number.isInteger(vertexCount) || vertexCount < 3) throw new Error('Projeto ZForm inválido');
-      if (project.indices && project.indices.some((index) => !Number.isInteger(index) || index < 0 || index >= vertexCount)) throw new Error('Índices de malha inválidos');
+      if (project.format !== 'zform' || project.version !== 1 || !Array.isArray(project.positions) || !Number.isInteger(vertexCount) || vertexCount < 3) throw new Error('Projeto ZForm inválido');
+      if (project.indices !== null && project.indices !== undefined && !Array.isArray(project.indices)) throw new Error('Índices de malha inválidos');
+      if (project.colors !== undefined && (!Array.isArray(project.colors) || project.colors.length !== vertexCount * 3)) throw new Error('Cores de malha inválidas');
+      if (project.mask !== undefined && (!Array.isArray(project.mask) || project.mask.length !== vertexCount)) throw new Error('Máscara de malha inválida');
       geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(project.positions, 3));
       if (project.indices?.length) geometry.setIndex(project.indices);
-      if (project.colors?.length === vertexCount * 3) geometry.setAttribute('color', new THREE.Float32BufferAttribute(project.colors, 3));
-      if (project.mask?.length === vertexCount) geometry.setAttribute('mask', new THREE.Float32BufferAttribute(project.mask, 1));
-      if (matOptions[project.material]) activeMaterial = project.material;
+      if (project.colors) geometry.setAttribute('color', new THREE.Float32BufferAttribute(project.colors, 3));
+      if (project.mask) geometry.setAttribute('mask', new THREE.Float32BufferAttribute(project.mask, 1));
+      assertValidGeometry(geometry);
+      const nextMaterial = matOptions[project.material] ? project.material : activeMaterial;
+      activeMaterial = nextMaterial;
       setGeometry(geometry, project.name || file.name.replace(/\.zform$/i, ''));
       document.querySelectorAll('.material-card').forEach((button) => button.classList.toggle('selected', button.dataset.material === activeMaterial));
       mesh.material.roughness = matOptions[activeMaterial].roughness;
@@ -497,10 +509,8 @@ async function importFile(file) {
       setToast('Formato não suportado. Use OBJ, STL ou GLB.'); return;
     }
     if (!geometry) { setToast('Não encontrei uma malha no arquivo.'); return; }
-    if (geometry.getAttribute('position').count > 120000) {
-      setToast('A malha excede o limite de 120 mil vértices deste MVP.'); return;
-    }
     geometry = normalizeGeometry(geometry);
+    assertValidGeometry(geometry);
     setGeometry(geometry, file.name.replace(/\.[^.]+$/, ''));
     setToast('Modelo importado');
   } catch (error) {

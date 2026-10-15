@@ -4,6 +4,7 @@ ZForm é um projeto original de código aberto, com interface e implementação 
 
 ## Estado atual
 
+- Fundação de malha: validação de posições, índices, cores, máscaras e limite de vértices em importação/restauração; Undo/Redo restaura também os índices após refinamento.
 - Escultura direta: desenhar, suavizar, mover, inflar, achatar, argila, vinco e pinçar.
 - Máscara por vértice, proteção de pintura/escultura, preenchimento de cor e pintura de vértice.
 - Simetria X, desfazer/refazer, refinamento simples e navegação com Alt + arrastar.
@@ -25,3 +26,4 @@ ZForm é um projeto original de código aberto, com interface e implementação 
 Cada etapa deve ter fluxo principal utilizável, persistência ou exportação quando aplicável, limite de memória explícito, interface acessível, documentação e verificação em navegador. Alvos de desempenho, incluindo 4 GB de VRAM, só serão declarados após medições em hardware correspondente.
 
 As áreas do roteiro refletem categorias amplas descritas na documentação pública do setor: escultura, organização de objetos, camadas, pintura/texturização, renderização e pipeline. Referências: [documentação de escultura](https://help.maxon.net/zbr/en-us/Content/html/features/main-features/sculpting/sculpting.html), [recursos de pintura e produção](https://www.maxon.net/en/product-detail/zbrush/features) e [renderização](https://help.maxon.net/zbr/en-us/Content/html/features/main-features/rendering/rendering.html).
+

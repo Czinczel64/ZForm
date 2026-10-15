@@ -9,6 +9,7 @@ ZForm is an original, local-first 3D sculpting and painting prototype. It is ins
 - X symmetry, adjustable brush size and strength, undo and redo, and one-step mesh refinement.
 - Local project persistence in IndexedDB.
 - Native `.zform` project files preserve the mesh topology, vertex colors, masks, material, and project name for reopening in ZForm.
+- Undo and redo preserve mesh topology when restoring geometry changes such as refinement. Imported and restored meshes are checked for finite positions, valid triangle indices, matching color/mask attributes, and the 120,000-vertex budget before replacing the active study.
 - OBJ, STL, and GLB import and export (the current importer uses the first mesh in a GLB scene).
 - Installable PWA shell with a service worker for same-origin assets.
 - A five-step guided walkthrough, contextual tips, and keyboard shortcuts in Portuguese.
@@ -25,6 +26,8 @@ pnpm dev
 ```
 
 Create a production bundle with `pnpm build`. Open the app through a local server (`pnpm dev`), HTTPS, or GitHub Pages; opening `index.html` directly with a `file://` URL will prevent browser modules and styles from loading correctly.
+
+Run geometry validation checks with `pnpm test`.
 
 ## Publish on GitHub Pages
 
