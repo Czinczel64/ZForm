@@ -8,6 +8,7 @@ ZForm is an original, local-first 3D sculpting and painting prototype. It is ins
 - Starter mesh with draw, smooth, move, inflate, flatten, clay, crease, pinch, paint, erase, and mask brushes. Masks protect painted and sculpted vertices.
 - X symmetry, adjustable brush size and strength, undo and redo, and one-step mesh refinement.
 - Local project persistence in IndexedDB.
+- Native `.zform` project files preserve the mesh topology, vertex colors, masks, material, and project name for reopening in ZForm.
 - OBJ, STL, and GLB import and export (the current importer uses the first mesh in a GLB scene).
 - Installable PWA shell with a service worker for same-origin assets.
 - A five-step guided walkthrough, contextual tips, and keyboard shortcuts in Portuguese.
@@ -42,3 +43,4 @@ The starter mesh is intentionally modest and the renderer limits device pixel ra
 MIT. See `LICENSE`.
 
 See [`ROADMAP.md`](ROADMAP.md) for the staged plan toward broader professional sculpting workflows.
+

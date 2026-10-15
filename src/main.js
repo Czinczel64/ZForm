@@ -466,7 +466,24 @@ async function importFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   try {
     let geometry;
-    if (ext === 'obj') {
+    if (ext === 'zform') {
+      const project = JSON.parse(await file.text());
+      const vertexCount = project.positions?.length / 3;
+      if (project.format !== 'zform' || !Number.isInteger(vertexCount) || vertexCount < 3) throw new Error('Projeto ZForm inválido');
+      if (project.indices && project.indices.some((index) => !Number.isInteger(index) || index < 0 || index >= vertexCount)) throw new Error('Índices de malha inválidos');
+      geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(project.positions, 3));
+      if (project.indices?.length) geometry.setIndex(project.indices);
+      if (project.colors?.length === vertexCount * 3) geometry.setAttribute('color', new THREE.Float32BufferAttribute(project.colors, 3));
+      if (project.mask?.length === vertexCount) geometry.setAttribute('mask', new THREE.Float32BufferAttribute(project.mask, 1));
+      if (matOptions[project.material]) activeMaterial = project.material;
+      setGeometry(geometry, project.name || file.name.replace(/\.zform$/i, ''));
+      document.querySelectorAll('.material-card').forEach((button) => button.classList.toggle('selected', button.dataset.material === activeMaterial));
+      mesh.material.roughness = matOptions[activeMaterial].roughness;
+      mesh.material.metalness = matOptions[activeMaterial].metalness;
+      setToast('Projeto ZForm aberto');
+      return;
+    } else if (ext === 'obj') {
       const root = new OBJLoader().parse(await file.text());
       root.traverse((object) => { if (!geometry && object.isMesh) geometry = object.geometry.clone(); });
     } else if (ext === 'stl') {
@@ -500,7 +517,18 @@ function downloadBlob(blob, filename) {
 function exportFile(format) {
   if (!mesh) return;
   const name = (mesh.name || 'forma').replace(/[^\p{L}\p{N}_-]+/gu, '-');
-  if (format === 'obj') {
+  if (format === 'zform') {
+    const geometry = mesh.geometry;
+    const project = {
+      format: 'zform', version: 1, name: mesh.name, material: activeMaterial,
+      positions: Array.from(geometry.getAttribute('position').array),
+      indices: geometry.index ? Array.from(geometry.index.array) : null,
+      colors: Array.from(geometry.getAttribute('color').array),
+      mask: Array.from(geometry.getAttribute('mask').array)
+    };
+    downloadBlob(new Blob([JSON.stringify(project)], { type: 'application/vnd.zform+json' }), `${name}.zform`);
+    setToast('Projeto ZForm salvo');
+  } else if (format === 'obj') {
     const text = new OBJExporter().parse(mesh);
     downloadBlob(new Blob([text], { type: 'text/plain' }), `${name}.obj`);
   } else if (format === 'glb') {
@@ -514,7 +542,7 @@ function exportFile(format) {
     downloadBlob(new Blob([data], { type: 'model/stl' }), `${name}.stl`);
   }
   $('#export-popover').classList.add('hidden');
-  setToast(`Arquivo ${format.toUpperCase()} exportado`);
+  if (format !== 'zform') setToast(`Arquivo ${format.toUpperCase()} exportado`);
 }
 
 function refineMesh() {
