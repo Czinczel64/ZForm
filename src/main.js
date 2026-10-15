@@ -12,7 +12,7 @@ import './style.css';
 const $ = (selector) => document.querySelector(selector);
 const viewport = $('#viewport');
 const toast = $('#toast');
-const toolNames = { draw: 'Desenhar', smooth: 'Suavizar', move: 'Mover', inflate: 'Inflar', flatten: 'Achatar', clay: 'Argila', crease: 'Vinco', pinch: 'Pinçar', mask: 'Máscara', unmask: 'Remover máscara', paint: 'Pincel', erase: 'Borracha' };
+const toolNames = { draw: 'Desenhar', smooth: 'Suavizar', move: 'Mover', inflate: 'Inflar', flatten: 'Achatar', clay: 'Argila', layer: 'Camada', crease: 'Vinco', pinch: 'Pinçar', scrape: 'Raspar', mask: 'Máscara', unmask: 'Remover máscara', paint: 'Pincel', erase: 'Borracha' };
 const tips = [
   ['Dica rápida', 'Faça pinceladas leves em várias passadas para construir volume com controle.'],
   ['Navegue pela forma', 'Segure Alt e arraste com o botão esquerdo para orbitar. Use a roda para aproximar ou afastar.'],
@@ -307,6 +307,7 @@ function dab(event) {
   const normalLocal = normal.clone().transformDirection(mesh.matrixWorld.clone().invert()).normalize();
   const directions = symmetry ? [localCenter, new THREE.Vector3(-localCenter.x, localCenter.y, localCenter.z)] : [localCenter];
   const neighbors = activeTool === 'smooth' ? getVertexNeighbors(geometry) : null;
+  const vertexNormals = activeTool === 'inflate' ? geometry.getAttribute('normal') : null;
   let touched = false;
   for (let i = 0; i < position.count; i++) {
     const vertex = new THREE.Vector3().fromBufferAttribute(position, i);
@@ -340,6 +341,7 @@ function dab(event) {
     } else {
       let amount = strength * falloff * 0.032 * protection;
       if (activeTool === 'move') amount = strength * falloff * 0.055 * protection;
+      if (activeTool === 'layer') amount = strength * falloff * 0.024 * protection;
       if (activeTool === 'crease') amount *= -1.1;
       if (activeTool === 'pinch') {
         const inward = localCenter.clone().sub(vertex).normalize();
@@ -347,13 +349,23 @@ function dab(event) {
         position.setXYZ(i, vertex.x, vertex.y, vertex.z); touched = true; continue;
       }
       if (activeTool === 'clay') amount *= 0.72;
-      if (activeTool === 'flatten') {
+      if (activeTool === 'scrape' || activeTool === 'flatten') {
         const distance = vertex.clone().sub(localCenter).dot(normalLocal);
-        const adjusted = vertex.clone().addScaledVector(normalLocal, -distance * strength * falloff * 0.45 * protection);
+        const factor = activeTool === 'scrape' ? 0.78 : 0.45;
+        const adjusted = vertex.clone().addScaledVector(normalLocal, -distance * strength * falloff * factor * protection);
         position.setXYZ(i, adjusted.x, adjusted.y, adjusted.z); touched = true; continue;
       }
-      const direction = activeTool === 'move' || activeTool === 'draw' || activeTool === 'clay' || activeTool === 'crease' ? normalLocal : vertex.clone().normalize();
-      const delta = (activeTool === 'draw' ? 1 : 1) * amount;
+      if (activeTool === 'layer') {
+        const height = vertex.clone().sub(localCenter).dot(normalLocal);
+        const targetHeight = 0.018 + amount * 0.7;
+        const lift = Math.min(amount, Math.max(0, targetHeight - height));
+        vertex.addScaledVector(normalLocal, lift);
+        position.setXYZ(i, vertex.x, vertex.y, vertex.z); touched = true; continue;
+      }
+      let direction = normalLocal;
+      if (activeTool === 'inflate') direction = new THREE.Vector3().fromBufferAttribute(vertexNormals, i).normalize();
+      if (activeTool === 'pinch') direction = vertex.clone().sub(localCenter).normalize();
+      const delta = activeTool === 'pinch' ? -amount * 1.8 : amount;
       vertex.addScaledVector(direction, delta);
       position.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
@@ -387,7 +399,7 @@ function beginStroke(event) {
     endStroke();
     return;
   }
-  if (event.button !== 0 || !['draw','smooth','move','inflate','flatten','clay','crease','pinch','mask','unmask','paint','erase'].includes(activeTool)) return;
+  if (event.button !== 0 || !['draw','smooth','move','inflate','flatten','clay','layer','crease','pinch','scrape','mask','unmask','paint','erase'].includes(activeTool)) return;
   if (event.target !== renderer.domElement) return;
   event.preventDefault();
   isPainting = true;
@@ -581,7 +593,7 @@ function openHelp() {
   $('#help-eyebrow').textContent = 'COMECE EM 1 MINUTO';
   $('#help-title').textContent = 'Conheça o ZForm';
   $('#help-text').textContent = 'Este guia mostra o fluxo básico para esculpir, pintar e salvar seu primeiro estudo.';
-  $('#guide-content').innerHTML = '<div><span>Desenhar volume</span><kbd>1</kbd></div><div><span>Suavizar</span><kbd>2</kbd></div><div><span>Mover</span><kbd>3</kbd></div><div><span>Inflar / achatar</span><kbd>4 / 5</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div><div><span>Importar arquivo</span><kbd>Arraste para a tela</kbd></div>';
+  $('#guide-content').innerHTML = '<div><span>Desenhar / suavizar</span><kbd>1 / 2</kbd></div><div><span>Mover / inflar</span><kbd>3 / 4</kbd></div><div><span>Achatar / raspar</span><kbd>5 / F</kbd></div><div><span>Argila / camada</span><kbd>8 / L</kbd></div><div><span>Vinco / pinçar</span><kbd>9 / 0</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div>';
   $('#start-help').textContent = 'Começar guia';
   $('#help-modal').classList.remove('hidden');
 }
@@ -611,7 +623,7 @@ document.addEventListener('keydown', (event) => {
   const target = event.target;
   if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? redo() : undo(); return; }
-  const keyTools = { '1':'draw','2':'smooth','3':'move','4':'inflate','5':'flatten','6':'paint','7':'erase','8':'clay','9':'crease','0':'pinch','m':event.shiftKey ? 'unmask' : 'mask' };
+  const keyTools = { '1':'draw','2':'smooth','3':'move','4':'inflate','5':'flatten','6':'paint','7':'erase','8':'clay','9':'crease','0':'pinch','f':'scrape','l':'layer','m':event.shiftKey ? 'unmask' : 'mask' };
   if (keyTools[event.key]) setTool(keyTools[event.key]);
   if (event.key === '?') $('#help-modal').classList.remove('hidden');
   if (event.key === 'Escape') { $('#help-modal').classList.add('hidden'); $('#export-popover').classList.add('hidden'); }
@@ -628,3 +640,4 @@ makeStarter();
 loadLocal().then((restored) => { if (restored) setToast('Projeto local restaurado'); });
 animate();
 if ('serviceWorker' in navigator && import.meta.env.PROD) navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
+
