@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111315" />
+    <meta name="description" content="ZForm, um estúdio original de escultura e pintura 3D." />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <title>ZForm — Estúdio 3D</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="ZForm início"><span class="brand-mark">Z</span><span>ZForm</span></a>
+        <div class="project-name"><span class="status-dot"></span><span id="project-title">Estudo sem título</span><span class="saved-label" id="saved-label">Salvo localmente</span></div>
+        <div class="top-actions"><button class="open-btn" id="open-file-button">Abrir modelo</button><button class="quiet-btn" id="help-button" title="Ajuda">Ajuda <kbd>?</kbd></button><button class="export-btn" id="export-menu-button">Exportar <span>⌄</span></button></div>
+      </header>
+      <main class="workspace">
+        <aside class="left-rail" aria-label="Ferramentas">
+          <div class="rail-heading">ESCULPIR</div>
+          <button class="tool active" data-tool="draw" title="Desenhar volume (1)"><span class="tool-glyph">◉</span><span>Desenhar</span><kbd>1</kbd></button>
+          <button class="tool" data-tool="smooth" title="Suavizar (2)"><span class="tool-glyph">≋</span><span>Suavizar</span><kbd>2</kbd></button>
+          <button class="tool" data-tool="move" title="Mover (3)"><span class="tool-glyph">✣</span><span>Mover</span><kbd>3</kbd></button>
+          <button class="tool" data-tool="inflate" title="Inflar (4)"><span class="tool-glyph">✺</span><span>Inflar</span><kbd>4</kbd></button>
+          <button class="tool" data-tool="flatten" title="Achatar (5)"><span class="tool-glyph">▱</span><span>Achatar</span><kbd>5</kbd></button>
+          <button class="tool" data-tool="clay" title="Argila (8)"><span class="tool-glyph">◉</span><span>Argila</span><kbd>8</kbd></button>
+          <button class="tool" data-tool="crease" title="Vinco (9)"><span class="tool-glyph">⌁</span><span>Vinco</span><kbd>9</kbd></button>
+          <button class="tool" data-tool="pinch" title="Pinçar (0)"><span class="tool-glyph">✣</span><span>Pinçar</span><kbd>0</kbd></button>
+          <div class="rail-divider"></div><div class="rail-heading">MÁSCARA</div>
+          <button class="tool" data-tool="mask" title="Pintar máscara (M)"><span class="tool-glyph">◐</span><span>Máscara</span><kbd>M</kbd></button>
+          <button class="tool" data-tool="unmask" title="Remover máscara (Shift+M)"><span class="tool-glyph">◑</span><span>Remover</span><kbd>⇧M</kbd></button>
+          <div class="rail-divider"></div><div class="rail-heading">PINTAR</div>
+          <button class="tool" data-tool="paint" title="Pintar (6)"><span class="tool-glyph">◍</span><span>Pincel</span><kbd>6</kbd></button>
+          <button class="tool" data-tool="erase" title="Apagar pintura (7)"><span class="tool-glyph">◌</span><span>Borracha</span><kbd>7</kbd></button>
+          <div class="rail-spacer"></div>
+          <button class="tool utility" id="undo-button" title="Desfazer (Ctrl+Z)"><span class="tool-glyph">↶</span><span>Desfazer</span><kbd>⌘Z</kbd></button>
+          <button class="tool utility" id="redo-button" title="Refazer (Ctrl+Shift+Z)"><span class="tool-glyph">↷</span><span>Refazer</span></button>
+        </aside>
+        <section class="stage-wrap">
+          <div class="stage-toolbar">
+            <div class="stage-left"><button class="icon-button" id="home-view" title="Centralizar câmera">⌂</button><span class="toolbar-separator"></span><button class="view-select" id="view-label">Perspectiva <span>⌄</span></button></div>
+            <div class="stage-center"><span class="mode-pill"><i></i> Modelagem</span><span class="mesh-info" id="mesh-info">Malha base · 20 mil faces</span></div>
+            <div class="stage-right"><button class="icon-button" id="grid-toggle" title="Alternar grade">▦</button><button class="icon-button" id="wire-toggle" title="Alternar malha">⌗</button><button class="icon-button" id="fullscreen" title="Tela cheia">⛶</button></div>
+          </div>
+          <div id="viewport" class="viewport">
+            <div class="canvas-label top-left"><span class="label-overline">PERSPECTIVA</span><span id="camera-coords">X 0 · Y 0 · Z 5</span></div>
+            <div class="canvas-label bottom-left"><span class="hint-key">BOTÃO ESQUERDO</span> esculpir <span class="hint-sep">·</span><span class="hint-key">ALT + ARRASTAR</span> orbitar <span class="hint-sep">·</span> roda para zoom</div>
+            <div class="brush-cursor" id="brush-cursor"></div>
+            <div class="drop-overlay" id="drop-overlay"><div class="drop-card"><span>＋</span><strong>Solte um modelo 3D</strong><small>OBJ, STL ou GLB</small></div></div>
+            <div class="toast" id="toast" role="status"></div>
+          </div>
+          <div class="timeline-bar"><div class="timeline-left"><span class="timeline-dot"></span><span>Objeto 01</span><span class="muted">·</span><span id="symmetry-label">Simetria X</span></div><div class="timeline-right"><button class="tiny-toggle active" id="symmetry-toggle"><span></span> Simetria</button><button class="icon-button small" id="fit-model" title="Enquadrar modelo">⌖</button></div></div>
+        </section>
+        <aside class="inspector">
+          <div class="panel-head"><div><div class="panel-kicker">PROPRIEDADES</div><h1 id="tool-title">Desenhar</h1></div><button class="more-button" title="Mais opções">•••</button></div>
+          <div class="panel-section"><div class="section-title">PINCEL <span class="subtle">AJUSTES</span></div><label class="control-label" for="size-control">Tamanho <output id="size-value">48</output></label><input id="size-control" type="range" min="8" max="140" value="48"/><div class="range-ends"><span>Pequeno</span><span>Grande</span></div><label class="control-label spaced" for="strength-control">Intensidade <output id="strength-value">35%</output></label><input id="strength-control" type="range" min="5" max="100" value="35"/><div class="range-ends"><span>Sutil</span><span>Forte</span></div></div>
+          <div class="panel-section color-section"><div class="section-title">COR DO PINCEL <button class="text-button" id="palette-toggle">Paleta</button></div><div class="color-row"><input id="color-control" type="color" value="#c57a62" aria-label="Escolher cor"/><div class="color-value"><strong id="color-hex">#C57A62</strong><small>Cor ativa</small></div><button class="swatch-dot clay" data-color="#c57a62" aria-label="Argila"></button><button class="swatch-dot ocean" data-color="#6487a0" aria-label="Azul"></button><button class="swatch-dot moss" data-color="#82936b" aria-label="Verde"></button></div><div class="swatches" id="swatches"><button data-color="#e9d9c8"></button><button data-color="#dca875"></button><button data-color="#c57a62"></button><button data-color="#9d6571"></button><button data-color="#8372a7"></button><button data-color="#6487a0"></button><button data-color="#6d9e9a"></button><button data-color="#82936b"></button><button data-color="#45474a"></button></div><button class="subdivide-btn" id="fill-color-button">Preencher malha com esta cor</button><button class="subdivide-btn" id="clear-mask-button">Limpar máscara</button></div>
+          <div class="panel-section"><div class="section-title">MATERIAL</div><div class="material-grid"><button class="material-card selected" data-material="clay"><span class="material-preview clay-preview"></span><span>Argila</span></button><button class="material-card" data-material="matte"><span class="material-preview matte-preview"></span><span>Fosco</span></button><button class="material-card" data-material="metal"><span class="material-preview metal-preview"></span><span>Metal</span></button><button class="material-card" data-material="soft"><span class="material-preview soft-preview"></span><span>Suave</span></button></div></div>
+          <div class="panel-section geometry-section"><div class="section-title">GEOMETRIA <button class="text-button" id="geometry-menu">Detalhes</button></div><div class="geometry-row"><span>Resolução</span><strong id="resolution-label">Alta</strong></div><div class="geometry-row"><span>Polígonos</span><strong id="polygon-count">20.480</strong></div><button class="subdivide-btn" id="subdivide-button">＋ <span>Refinar malha</span></button></div>
+          <div class="learning-card"><div class="learning-icon">✦</div><div><strong id="tip-title">Dica rápida</strong><p id="tip-text">Faça pinceladas leves em várias passadas para construir volume com controle.</p><button id="next-tip" class="tip-next">Próxima dica <span>→</span></button></div><button id="close-tip" class="close-tip" aria-label="Fechar dica">×</button></div>
+        </aside>
+      </main>
+      <input id="file-input" type="file" accept=".obj,.stl,.glb,.gltf,model/stl,model/gltf-binary,text/plain" hidden />
+      <div id="export-popover" class="export-popover hidden"><button data-export="obj">Exportar OBJ</button><button data-export="stl">Exportar STL</button><button data-export="glb">Exportar GLB</button></div>
+      <div id="help-modal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="modal-close" id="close-help">×</button><span class="modal-eyebrow" id="help-eyebrow">COMECE EM 1 MINUTO</span><h2 id="help-title">Conheça o ZForm</h2><p id="help-text">Este guia mostra o fluxo básico para esculpir, pintar e salvar seu primeiro estudo.</p><div class="shortcut-list" id="guide-content"><div><span>Desenhar volume</span><kbd>1</kbd></div><div><span>Suavizar</span><kbd>2</kbd></div><div><span>Mover</span><kbd>3</kbd></div><div><span>Inflar / achatar</span><kbd>4 / 5</kbd></div><div><span>Pintar / borracha</span><kbd>6 / 7</kbd></div><div><span>Desfazer</span><kbd>Ctrl + Z</kbd></div><div><span>Importar arquivo</span><kbd>Arraste para a tela</kbd></div></div><div class="guide-actions"><button class="secondary-button" id="skip-tour">Fechar</button><button class="primary-button" id="start-help">Começar guia</button></div></div></div>
+      <div class="bottom-hint">Feito para explorar <span>✦</span> <button id="bottom-help">Atalhos e ajuda</button></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

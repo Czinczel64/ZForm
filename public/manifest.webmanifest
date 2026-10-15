@@ -1,0 +1,13 @@
+{
+  "name": "ZForm — Estúdio 3D",
+  "short_name": "ZForm",
+  "description": "Um espaço original para esculpir e pintar formas 3D.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111315",
+  "theme_color": "#111315",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
